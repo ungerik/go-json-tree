@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+// Implement Writer to handle writing JSON
+// for a data-type yourself.
 type Writer interface {
 	WriteJSON(builder *Builder)
 }
