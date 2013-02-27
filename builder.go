@@ -7,6 +7,10 @@ import (
 	"strconv"
 )
 
+type Writer interface {
+	WriteJSON(builder *Builder)
+}
+
 type state int
 
 const (
@@ -108,34 +112,36 @@ func (self *Builder) Name(name string) *Builder {
 func (self *Builder) Value(value interface{}) *Builder {
 	if value == nil {
 		self.buffer.WriteString("null")
-	}
-	v := reflect.ValueOf(value)
-	switch v.Kind() {
-	case reflect.String:
-		self.buffer.WriteByte('"')
-		json.HTMLEscape(&self.buffer, []byte(v.String()))
-		self.buffer.WriteByte('"')
+	} else if writer, ok := value.(Writer); ok {
+		writer.WriteJSON(self)
+	} else {
+		v := reflect.ValueOf(value)
+		switch v.Kind() {
+		case reflect.String:
+			self.buffer.WriteByte('"')
+			json.HTMLEscape(&self.buffer, []byte(v.String()))
+			self.buffer.WriteByte('"')
 
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		self.buffer.WriteString(strconv.FormatInt(v.Int(), 10))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			self.buffer.WriteString(strconv.FormatInt(v.Int(), 10))
 
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		self.buffer.WriteString(strconv.FormatUint(v.Uint(), 10))
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			self.buffer.WriteString(strconv.FormatUint(v.Uint(), 10))
 
-	case reflect.Float32, reflect.Float64:
-		self.buffer.WriteString(strconv.FormatFloat(v.Float(), 'f', -1, 64))
+		case reflect.Float32, reflect.Float64:
+			self.buffer.WriteString(strconv.FormatFloat(v.Float(), 'f', -1, 64))
 
-	case reflect.Bool:
-		if v.Bool() {
-			self.buffer.WriteString("true")
-		} else {
-			self.buffer.WriteString("false")
+		case reflect.Bool:
+			if v.Bool() {
+				self.buffer.WriteString("true")
+			} else {
+				self.buffer.WriteString("false")
+			}
+
+		default:
+			panic("Type not supported as JSON value")
 		}
-
-	default:
-		panic("Type not supported as JSON value")
 	}
-
 	self.buffer.WriteByte(',')
 	self.afterName = false
 	return self
